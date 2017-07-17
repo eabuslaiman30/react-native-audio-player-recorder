@@ -81,6 +81,12 @@ class AudioRecorderManager extends ReactContextBaseJavaModule {
       promise.reject("INVALID_STATE", "Please call stopRecording before starting recording");
     }
 
+    //Request permissions programatically for specifically android versions.
+    if (ActivityCompat.checkSelfPermission(getCurrentActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+      ActivityCompat.requestPermissions(getCurrentActivity(), new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+      return;
+    }
+
     recorder = new MediaRecorder();
     try {
       recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
