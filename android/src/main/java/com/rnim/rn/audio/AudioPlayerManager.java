@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Environment;
 import android.media.MediaPlayer;
 import android.media.AudioManager;
@@ -38,6 +40,7 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
   private MediaPlayer mediaPlayer;
   private Timer timer;
   private String currentFileName;
+  private String currentFilePath;
   private int currentPosition;
   private boolean isPlaying = false;
   private boolean isPaused = false;
@@ -94,6 +97,17 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
       return;
     }
     promise.resolve(mediaPlayer.getDuration());
+  }
+
+  @ReactMethod
+  public void getDurationFromUrl(String url, Promise promise) {
+    Uri uri = Uri.parse(url);
+    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+    //mmr.setDataSource(context,uri);
+    mmr.setDataSource(url, new HashMap<String, String>());
+    String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+    int millSecond = Integer.parseInt(durationStr);
+    promise.resolve(millSecond);
   }
 
   @ReactMethod
@@ -252,6 +266,7 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
         stopTimer();
       }
     });
+    currentFilePath = path;
     mediaPlayer.start();
     startTimer();
   }
@@ -265,6 +280,7 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
         if (mediaPlayer != null && isPlaying) {
           WritableMap map = Arguments.createMap();
           map.putDouble("currentTime", mediaPlayer.getCurrentPosition()/1000.0);
+          map.putDouble("currentFilePath", currentFilePath);
           sendEvent("playerProgress", map);
         }
       }
