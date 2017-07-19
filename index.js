@@ -72,7 +72,9 @@ var AudioPlayer = {
   getDurationFromPath: function(path) {
     return AudioPlayerManager.getDurationFromPath(path);
   },
-
+  getDurationFromUrl: function(url) {
+    return AudioPlayerManager.getDurationFromUrl(url);
+  },
   getDuration: function(callback) {
     AudioPlayerManager.getDuration((error, duration) => {
       callback(duration);
