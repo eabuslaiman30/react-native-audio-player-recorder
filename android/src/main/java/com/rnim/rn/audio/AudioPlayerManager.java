@@ -280,7 +280,7 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
         if (mediaPlayer != null && isPlaying) {
           WritableMap map = Arguments.createMap();
           map.putDouble("currentTime", mediaPlayer.getCurrentPosition()/1000.0);
-          map.putStringi("currentFilePath", currentFilePath);
+          map.putString("currentFilePath", currentFilePath);
           sendEvent("playerProgress", map);
         }
       }
