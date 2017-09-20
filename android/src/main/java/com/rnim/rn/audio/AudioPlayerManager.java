@@ -101,13 +101,17 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void getDurationFromUrl(String url, Promise promise) {
-    Uri uri = Uri.parse(url);
-    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-    //mmr.setDataSource(context,uri);
-    mmr.setDataSource(url, new HashMap<String, String>());
-    String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-    int millSecond = Integer.parseInt(durationStr);
-    promise.resolve(millSecond);
+      try {
+          Uri uri = Uri.parse(url);
+          MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+          //mmr.setDataSource(context,uri);
+          mmr.setDataSource(url, new HashMap<String, String>());
+          String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+          int millSecond = Integer.parseInt(durationStr);
+          promise.resolve(millSecond);
+      } catch (Exception ex) {
+          promise.resolve(0);
+      }
   }
 
   @ReactMethod

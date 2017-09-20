@@ -166,7 +166,7 @@ RCT_EXPORT_METHOD(prepareRecordingAtPath:(NSString *)path sampleRate:(float)samp
   NSError *error = nil;
   
   _recordSession = [AVAudioSession sharedInstance];
-  [_recordSession setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+  [_recordSession setCategory:AVAudioSessionCategoryPlayAndRecord withOptions:AVAudioSessionCategoryOptionDefaultToSpeaker error:nil];
   
   _audioRecorder = [[AVAudioRecorder alloc]
                     initWithURL:_audioFileURL
@@ -184,21 +184,26 @@ RCT_EXPORT_METHOD(prepareRecordingAtPath:(NSString *)path sampleRate:(float)samp
   }
 }
 
-RCT_EXPORT_METHOD(startRecording)
+RCT_REMAP_METHOD(startRecording,
+                  startRecordingResolver:(RCTPromiseResolveBlock)resolve
+                  startRecordingRejecter:(RCTPromiseRejectBlock)reject)
 {
   if (!_audioRecorder.recording) {
     [self startProgressTimer];
     [_recordSession setActive:YES error:nil];
     [_audioRecorder record];
-    
+    resolve(_audioRecorder.url.relativePath);
   }
 }
 
-RCT_EXPORT_METHOD(stopRecording)
+RCT_REMAP_METHOD(stopRecording,
+                 stopRecordingResolver:(RCTPromiseResolveBlock)resolve
+                 stopRecordingRejecter:(RCTPromiseRejectBlock)reject)
 {
   [_audioRecorder stop];
   [_recordSession setActive:NO error:nil];
   _prevProgressUpdateTime = nil;
+  resolve(_audioRecorder.url.relativePath);
 }
 
 RCT_EXPORT_METHOD(pauseRecording)
@@ -220,6 +225,7 @@ RCT_EXPORT_METHOD(playRecording)
     NSError *error;
     
     if (!_audioPlayer.playing) {
+        
       _audioPlayer = [[AVAudioPlayer alloc]
                       initWithContentsOfURL:_audioRecorder.url
                       error:&error];

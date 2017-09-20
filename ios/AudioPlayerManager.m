@@ -49,10 +49,16 @@ RCT_EXPORT_MODULE();
   
   if (_prevProgressUpdateTime == nil ||
       (([_prevProgressUpdateTime timeIntervalSinceNow] * -1000.0) >= _progressUpdateInterval)) {
-    [_bridge.eventDispatcher sendDeviceEventWithName:AudioPlayerEventProgress body:@{
-                                                                                     @"currentTime": [NSNumber numberWithFloat:_currentTime],
-                                                                                     @"currentDuration": [NSNumber numberWithFloat:_currentDuration]
-                                                                                     }];
+      
+      NSMutableDictionary *body = [[NSMutableDictionary alloc] init];
+      [body setObject:[NSNumber numberWithFloat:_currentTime] forKey:@"currentTime"];
+      [body setObject:[NSNumber numberWithFloat:_currentDuration] forKey:@"currentDuration"];
+      
+      if(_audioFileURL != nil) {
+          [body setObject:_audioFileURL.absoluteString forKey:@"currentFilePath"];
+      }
+      
+    [_bridge.eventDispatcher sendDeviceEventWithName:AudioPlayerEventProgress body:body];
     _prevProgressUpdateTime = [NSDate date];
   }
 }
@@ -81,7 +87,8 @@ RCT_EXPORT_MODULE();
   [self sendProgressUpdate];
   
   [_bridge.eventDispatcher sendDeviceEventWithName:AudioPlayerEventFinished body:@{
-                                                                                   @"finished": flag ? @"true" : @"false"
+                                                                                   @"finished": flag ? @"true" : @"false",
+                                                                                   @"currentFilePath": _audioFileURL.absoluteString
                                                                                    }];
 }
 
@@ -94,7 +101,7 @@ RCT_EXPORT_METHOD(play:(NSString *)path options:(NSDictionary *)options)
   NSString *output = [RCTConvert NSString:options[@"output"]];
   [self setAudioOutput:output];
   NSNumber *numberOfLoops = [RCTConvert NSNumber:options[@"numberOfLoops"]];
-  
+    
   _audioFileURL = [NSURL fileURLWithPath:path];
   
   _audioPlayer = [[AVAudioPlayer alloc]
@@ -113,7 +120,11 @@ RCT_EXPORT_METHOD(play:(NSString *)path options:(NSDictionary *)options)
   }
 }
 
-RCT_EXPORT_METHOD(playWithUrl:(NSURL *) url options:(NSDictionary *)options)
+RCT_REMAP_METHOD(playWithUrl,
+                 url:(NSURL *)url
+                 options:(NSDictionary*)options
+                 getDurationFromUrlResolver:(RCTPromiseResolveBlock)resolve
+                 getDurationFromUrlRejecter:(RCTPromiseRejectBlock)reject)
 {
   NSError *error;
   NSData* data = [NSData dataWithContentsOfURL: url];
@@ -121,6 +132,7 @@ RCT_EXPORT_METHOD(playWithUrl:(NSURL *) url options:(NSDictionary *)options)
   [self setSessionCategory:sessionCategory];
   NSNumber *numberOfLoops = [RCTConvert NSNumber:options[@"numberOfLoops"]];
   
+  _audioFileURL = url;
   _audioPlayer = [[AVAudioPlayer alloc] initWithData:data  error:&error];
   _audioPlayer.delegate = self;
   _audioPlayer.numberOfLoops = [numberOfLoops integerValue];
@@ -133,6 +145,8 @@ RCT_EXPORT_METHOD(playWithUrl:(NSURL *) url options:(NSDictionary *)options)
     [self startProgressTimer];
     [_audioPlayer play];
   }
+    
+  resolve(@[url.absoluteString, [NSNumber numberWithFloat:_audioPlayer.duration]]);
 }
 
 - (void)setSessionCategory:(NSString *)sessionCategory {
@@ -250,6 +264,34 @@ RCT_EXPORT_METHOD(getDuration:(RCTResponseSenderBlock)callback)
 {
   NSTimeInterval duration = _audioPlayer.duration;
   callback(@[[NSNull null], [NSNumber numberWithDouble:duration]]);
+}
+
+RCT_REMAP_METHOD(getDurationFromPath,
+                 path:(NSString *)path
+                 getDurationFromPathResolver:(RCTPromiseResolveBlock)resolve
+                 getDurationFromPathRejecter:(RCTPromiseRejectBlock)reject)
+{
+    AVURLAsset* audioAsset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:path] options:nil];
+    CMTime audioDuration = audioAsset.duration;
+    float audioDurationSeconds = CMTimeGetSeconds(audioDuration);
+    resolve([NSNumber numberWithFloat:audioDurationSeconds * 1000]);
+}
+
+RCT_REMAP_METHOD(getDurationFromUrl,
+                 path:(NSString *)url
+                 getDurationFromUrlResolver:(RCTPromiseResolveBlock)resolve
+                 getDurationFromUrlRejecter:(RCTPromiseRejectBlock)reject)
+{
+    //AVURLAsset* audioAsset = [AVURLAsset assetWithURL:[NSURL URLWithString:url]];
+    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:[NSURL URLWithString:url]];
+    CMTime videoDuration = playerItem.duration;
+    float seconds = CMTimeGetSeconds(videoDuration);
+    
+    NSError *error = nil;
+    NSData* data = [NSData dataWithContentsOfURL:[NSURL URLWithString: url]];
+    AVAudioPlayer *pp = [[AVAudioPlayer alloc] initWithData:data error:&error];
+    
+    resolve([NSNumber numberWithFloat:(pp.duration * 1000)]);
 }
 
 RCT_EXPORT_METHOD(getOutputs:(RCTResponseSenderBlock)callback)
