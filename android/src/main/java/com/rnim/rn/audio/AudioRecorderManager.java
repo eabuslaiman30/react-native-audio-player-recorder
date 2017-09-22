@@ -185,11 +185,18 @@ class AudioRecorderManager extends ReactContextBaseJavaModule {
       promise.reject("INVALID_STATE", "Please call startRecording before stopping recording");
       return;
     }
-    recorder.stop();
-    isRecording = false;
-    recorder.release();
-    promise.resolve(currentOutputFile);
-    sendEvent("recordingFinished", null);
+    try {
+        recorder.stop();
+        isRecording = false;
+        recorder.release();
+        promise.resolve(currentOutputFile);
+        sendEvent("recordingFinished", null);
+    } catch (IllegalStateException exception) {
+        isRecording = false;
+        promise.resolve(currentOutputFile);
+        sendEvent("recordingFinished", null);
+
+    }
   }
 
   @ReactMethod
