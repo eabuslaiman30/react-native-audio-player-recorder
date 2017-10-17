@@ -106,7 +106,7 @@ var AudioRecorder = {
     var recordingOptions = {...defaultOptions, ...options};
 
     if (Platform.OS === 'ios') {
-      AudioRecorderManager.prepareRecordingAtPath(
+       AudioRecorderManager.prepareRecordingAtPath(
         path,
         recordingOptions.SampleRate,
         recordingOptions.Channels,

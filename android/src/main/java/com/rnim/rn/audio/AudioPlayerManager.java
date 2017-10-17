@@ -144,13 +144,19 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void stop(Promise promise) {
-    if (!isPlaying) {
+    /** if (!isPlaying) {
       Log.e("INVALID_STATE", "Please call play or playWithURL before stopping playback");
       promise.reject("INVALID_STATE", "Please call play or playWithURL before stopping playback");
       return;
+  } **/
+
+    try {
+        mediaPlayer.stop();
+        mediaPlayer.release();
+    } catch (Exception ex) {
+        //Do nothing
     }
-    mediaPlayer.stop();
-    mediaPlayer.release();
+    mediaPlayer = null;
     isPlaying = false;
     isPaused = false;
     stopTimer();
@@ -166,11 +172,15 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
     }
 
     mediaPlayer.pause();
-    currentPosition = mediaPlayer.getCurrentPosition();
-    isPaused = true;
-    isPlaying = false;
-    stopTimer();
-    promise.resolve(currentFileName);
+    try {
+        currentPosition = mediaPlayer.getCurrentPosition();
+        isPaused = true;
+        isPlaying = false;
+        stopTimer();
+        promise.resolve(currentFileName);
+    } catch (Exception ex) {
+        promise.reject("INVALID_STATE", "There was an error while trying to pause the song.");
+    }
   }
 
   @ReactMethod
@@ -195,6 +205,7 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
       promise.reject("INVALID_PATH", "Please set valid path");
       return;
     }
+
     if (isPlaying) {
       /* Comment by Grace Han 2016-12-23
          Can not replace the code below to stop(promise)
@@ -205,17 +216,23 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
       */
       mediaPlayer.stop();
       mediaPlayer.release();
+      mediaPlayer = null;
       isPlaying = false;
       isPaused = false;
       stopTimer();
     }
-    mediaPlayer = new MediaPlayer();
-    mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-    setAudioOutput(playbackSettings);
-    playMedia("local", path, promise);
-    isPlaying = true;
-    isPaused = false;
-    return;
+
+    try {
+        mediaPlayer = new MediaPlayer();
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        setAudioOutput(playbackSettings);
+        playMedia("local", path, promise);
+        isPlaying = true;
+        isPaused = false;
+        return;
+    } catch(Exception ex) {
+        promise.reject("INVALID_STATE", "There was an error while trying to play song.");
+    }
   }
 
   @ReactMethod
@@ -288,8 +305,13 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
               map.putString("currentFilePath", currentFilePath);
               sendEvent("playerProgress", map);
           } catch (IllegalStateException e) {
-              mediaPlayer.reset();
-              currentPosition = mediaPlayer.getCurrentPosition();
+              try {
+                  mediaPlayer.reset();
+                  currentPosition = mediaPlayer.getCurrentPosition();
+              } catch (Exception ex) {
+                  //Do nothing, silent.
+                  currentPosition = 0;
+              }
           }
         }
       }
@@ -324,15 +346,12 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
 
     } catch (IllegalArgumentException e) {
       promise.reject("COULDNT_PREPARE_MEDIAPLAYER", e.getMessage());
-      e.printStackTrace();
     } catch (SecurityException e) {
       promise.reject("COULDNT_PREPARE_MEDIAPLAYER", e.getMessage());
-      e.printStackTrace();
     } catch (IllegalStateException e) {
       promise.reject("COULDNT_PREPARE_MEDIAPLAYER", e.getMessage());
     } catch (IOException e) {
       promise.reject("COULDNT_PREPARE_MEDIAPLAYER", e.getMessage());
-      e.printStackTrace();
     }
     try {
       mediaPlayer.prepare();
@@ -340,12 +359,10 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
 
     } catch (IllegalStateException e) {
       promise.reject("COULDNT_PREPARE_MEDIAPLAYER", e.getMessage());
-      e.printStackTrace();
     } catch (IOException e) {
       promise.reject("COULDNT_PREPARE_MEDIAPLAYER", e.getMessage());
-      e.printStackTrace();
     }
-    return false;
+    return true;
   }
 
   private void sendEvent(String eventName, Object params) {
@@ -357,7 +374,7 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
   private void setAudioOutput(ReadableMap playbackSettings)
   {
     if(playbackSettings != null && playbackSettings.hasKey("output"))
-    {
+     {
       String audioPort = playbackSettings.getString("output");
       AudioManager audioManager = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
       switch (audioPort){
