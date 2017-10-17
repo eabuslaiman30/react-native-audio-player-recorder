@@ -231,7 +231,9 @@ class AudioPlayerManager extends ReactContextBaseJavaModule {
         isPaused = false;
         return;
     } catch(Exception ex) {
-        promise.reject("INVALID_STATE", "There was an error while trying to play song.");
+        isPlaying = false;
+        isPaused = false;
+        //promise.reject("INVALID_STATE", "There was an error while trying to play song.");
     }
   }
 
